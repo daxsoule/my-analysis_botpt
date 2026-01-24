@@ -149,6 +149,10 @@ def plot_differential(depth_e: pd.Series, depth_f: pd.Series, filename: str):
     ax.axhline(y=high_2015, color="red", linestyle="-", linewidth=1.5,
                label=f"2015 high ({high_2015:.2f} m)")
 
+    # Add red dashed lines at +/- 20 cm from 2015 high
+    ax.axhline(y=high_2015 + 0.20, color="red", linestyle="--", linewidth=1, alpha=0.7)
+    ax.axhline(y=high_2015 - 0.20, color="red", linestyle="--", linewidth=1, alpha=0.7)
+
     # Labels and title
     ax.set_xlabel("Year")
     ax.set_ylabel("Differential Depth (m)")
