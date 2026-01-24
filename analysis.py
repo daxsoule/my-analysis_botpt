@@ -22,7 +22,9 @@ OUTPUT_DIR = Path("/home/jovyan/repos/specKitScience/my-analysis_botpt")
 
 # Time range
 TIME_START = "2015-01-01"
-TIME_END = "2015-12-31"
+TIME_END = "2026-01-16"
+TIME_START_YEAR = 2015
+TIME_END_YEAR = 2026
 
 
 def pressure_to_depth(pressure_psia):
@@ -30,8 +32,8 @@ def pressure_to_depth(pressure_psia):
     return (pressure_psia - 14.7) * 0.670
 
 
-def filter_files_by_year(nc_files: list[Path], year: int) -> list[Path]:
-    """Filter NetCDF files to those covering the target year (15s data only)."""
+def filter_files_by_time_range(nc_files: list[Path]) -> list[Path]:
+    """Filter NetCDF files to those covering the target time range (15s data only)."""
     filtered = []
     pattern = re.compile(r"_15s_(\d{4})\d{4}T\d{6}-(\d{4})\d{4}T")
 
@@ -44,16 +46,17 @@ def filter_files_by_year(nc_files: list[Path], year: int) -> list[Path]:
         if match:
             start_year = int(match.group(1))
             end_year = int(match.group(2))
-            if start_year <= year and end_year >= year:
+            # Include file if it overlaps with our time range
+            if start_year <= TIME_END_YEAR and end_year >= TIME_START_YEAR:
                 filtered.append(f)
 
     return sorted(filtered)
 
 
 def load_station(data_path: Path, station_name: str) -> pd.Series:
-    """Load pressure data for a station, filtered to 2015, resampled to hourly."""
+    """Load pressure data for a station, filtered to time range, resampled to hourly."""
     all_files = sorted(data_path.glob("*.nc"))
-    nc_files = filter_files_by_year(all_files, 2015)
+    nc_files = filter_files_by_time_range(all_files)
 
     print(f"{station_name}: Loading {len(nc_files)} files")
 
@@ -112,31 +115,69 @@ def plot_depth(depth: pd.Series, station: str, filename: str, color: str):
 
 
 def plot_differential(depth_e: pd.Series, depth_f: pd.Series, filename: str):
-    """Plot differential uplift (MJ03F - MJ03E)."""
-    fig, ax = plt.subplots(figsize=(10, 4))
-
+    """Plot differential uplift (MJ03E - MJ03F)."""
     # Align on common time index
     combined = pd.DataFrame({"e": depth_e, "f": depth_f}).dropna()
-    differential = combined["f"] - combined["e"]
 
-    ax.plot(differential.index, differential.values, color="purple", linewidth=0.5)
-    ax.set_xlabel("Date")
+    # Calculate differential depth: MJ03E - MJ03F (per constitution)
+    # Positive values = MJ03E deeper than MJ03F (Central Caldera uplifted)
+    uplift = combined["e"] - combined["f"]
+
+    # Resample to daily to remove tidal noise
+    uplift_daily = uplift.resample("1D").mean()
+
+    # Find 2015 high value for reference line
+    uplift_2015 = uplift_daily["2015"]
+    high_2015 = uplift_2015.max()
+
+    # Set up publication-quality figure (two-column width: 6" x 3")
+    plt.rcParams.update({
+        'font.size': 10,
+        'axes.labelsize': 11,
+        'axes.titlesize': 12,
+        'xtick.labelsize': 10,
+        'ytick.labelsize': 10,
+    })
+
+    fig, ax = plt.subplots(figsize=(6, 3))
+
+    # Plot the data
+    ax.plot(uplift_daily.index, uplift_daily.values,
+            color="#2E86AB", linewidth=1, label="Daily mean")
+
+    # Add red horizontal line for 2015 high
+    ax.axhline(y=high_2015, color="red", linestyle="-", linewidth=1.5,
+               label=f"2015 high ({high_2015:.2f} m)")
+
+    # Labels and title
+    ax.set_xlabel("Year")
     ax.set_ylabel("Differential Depth (m)")
-    ax.set_title("Differential Uplift (MJ03F - MJ03E) - 2015")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-    ax.grid(True, alpha=0.3)
+    ax.set_title("Differential Uplift (MJ03E − MJ03F)")
+
+    # Format x-axis for multi-year data
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+
+    # Clean up the plot
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
+    ax.legend(loc="lower right", framealpha=0.9, fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / filename, dpi=300)
+    plt.savefig(OUTPUT_DIR / filename, dpi=300, facecolor="white", edgecolor="none")
     plt.close()
+
+    # Reset rcParams
+    plt.rcParams.update(plt.rcParamsDefault)
+
     print(f"Saved: {filename}")
 
 
 def main():
     print("=" * 60)
-    print("Differential Uplift Analysis - Axial Seamount 2015")
+    print("Differential Uplift Analysis - Axial Seamount")
+    print(f"Time range: {TIME_START} to {TIME_END}")
     print("=" * 60)
 
     # Load data (processes file by file to manage memory)
@@ -148,9 +189,9 @@ def main():
 
     # Generate plots
     print("\nGenerating plots...")
-    plot_depth(depth_e, "MJ03E (Eastern Caldera)", "depth_mj03e_2015.png", "blue")
-    plot_depth(depth_f, "MJ03F (Central Caldera)", "depth_mj03f_2015.png", "red")
-    plot_differential(depth_e, depth_f, "differential_uplift_2015.png")
+    plot_depth(depth_e, "MJ03E (Eastern Caldera)", "depth_mj03e.png", "blue")
+    plot_depth(depth_f, "MJ03F (Central Caldera)", "depth_mj03f.png", "red")
+    plot_differential(depth_e, depth_f, "differential_uplift.png")
 
     print("\nDone!")
 
