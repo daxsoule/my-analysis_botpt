@@ -154,21 +154,47 @@ def plot_depth(depth: pd.Series, station: str, filename: str, color: str):
     print(f"Saved: {filename}")
 
 
-def plot_differential(depth_e: pd.Series, depth_f: pd.Series, filename: str):
-    """Plot differential uplift (MJ03E - MJ03F)."""
+def compute_differential(depth_e: pd.Series, depth_f: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Compute differential uplift and return hourly and daily DataFrames.
+
+    Returns:
+        Tuple of (hourly_df, daily_df) with columns for both stations and differential
+    """
     # Align on common time index
-    combined = pd.DataFrame({"e": depth_e, "f": depth_f}).dropna()
+    combined = pd.DataFrame({
+        "depth_mj03e_m": depth_e,
+        "depth_mj03f_m": depth_f
+    }).dropna()
 
     # Calculate differential depth: MJ03E - MJ03F (per constitution)
     # Positive values = MJ03E deeper than MJ03F (Central Caldera uplifted)
-    uplift = combined["e"] - combined["f"]
+    combined["differential_m"] = combined["depth_mj03e_m"] - combined["depth_mj03f_m"]
 
-    # Remove spikes from the differential signal (before daily averaging)
+    # Remove spikes from the differential signal
     print("  Filtering spikes from differential signal...")
-    uplift = remove_spikes(uplift, window_hours=24, threshold=3.5)
+    combined["differential_m"] = remove_spikes(combined["differential_m"], window_hours=24, threshold=3.5)
 
-    # Resample to daily to remove tidal noise
-    uplift_daily = uplift.resample("1D").mean()
+    # Create daily version
+    daily = combined.resample("1D").mean()
+
+    return combined, daily
+
+
+def export_parquet(hourly_df: pd.DataFrame, daily_df: pd.DataFrame):
+    """Export cleaned data to Parquet files for easy integration with other datasets."""
+    hourly_path = OUTPUT_DIR / "differential_uplift_hourly.parquet"
+    daily_path = OUTPUT_DIR / "differential_uplift_daily.parquet"
+
+    hourly_df.to_parquet(hourly_path)
+    daily_df.to_parquet(daily_path)
+
+    print(f"Exported: {hourly_path.name} ({len(hourly_df)} rows)")
+    print(f"Exported: {daily_path.name} ({len(daily_df)} rows)")
+
+
+def plot_differential(daily_df: pd.DataFrame, filename: str):
+    """Plot differential uplift from daily DataFrame."""
+    uplift_daily = daily_df["differential_m"]
 
     # Find 2015 high value for reference line
     uplift_2015 = uplift_daily["2015"]
@@ -235,11 +261,19 @@ def main():
     print("\nLoading MJ03F (Central Caldera)...")
     depth_f = load_station(MJ03F_PATH, "MJ03F")
 
+    # Compute differential uplift
+    print("\nComputing differential uplift...")
+    hourly_df, daily_df = compute_differential(depth_e, depth_f)
+
+    # Export to Parquet
+    print("\nExporting data...")
+    export_parquet(hourly_df, daily_df)
+
     # Generate plots
     print("\nGenerating plots...")
     plot_depth(depth_e, "MJ03E (Eastern Caldera)", "depth_mj03e.png", "blue")
     plot_depth(depth_f, "MJ03F (Central Caldera)", "depth_mj03f.png", "red")
-    plot_differential(depth_e, depth_f, "differential_uplift.png")
+    plot_differential(daily_df, "differential_uplift.png")
 
     print("\nDone!")
 
