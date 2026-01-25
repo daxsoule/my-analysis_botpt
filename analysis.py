@@ -32,6 +32,42 @@ def pressure_to_depth(pressure_psia):
     return (pressure_psia - 14.7) * 0.670
 
 
+def remove_spikes(series: pd.Series, window_hours: int = 24, threshold: float = 5.0) -> pd.Series:
+    """Remove spikes using rolling median and MAD (median absolute deviation).
+
+    MAD is more robust to outliers than standard deviation.
+
+    Args:
+        series: Hourly depth time series
+        window_hours: Rolling window size in hours
+        threshold: Number of MADs for spike threshold
+
+    Returns:
+        Series with spikes replaced by NaN
+    """
+    cleaned = series.copy()
+
+    # Use median (robust to outliers)
+    rolling_median = cleaned.rolling(window=window_hours, center=True, min_periods=1).median()
+
+    # Calculate MAD (median absolute deviation) - more robust than std
+    deviation = (cleaned - rolling_median).abs()
+    rolling_mad = deviation.rolling(window=window_hours, center=True, min_periods=1).median()
+
+    # Scale MAD to be comparable to std (for normal distribution, std ≈ 1.4826 * MAD)
+    scaled_mad = 1.4826 * rolling_mad
+
+    # Flag values more than threshold MADs from rolling median
+    is_spike = deviation > (threshold * scaled_mad)
+
+    n_spikes = is_spike.sum()
+    if n_spikes > 0:
+        print(f"    Removed {n_spikes} spikes ({100*n_spikes/len(series):.2f}%)")
+        cleaned[is_spike] = pd.NA
+
+    return cleaned
+
+
 def filter_files_by_time_range(nc_files: list[Path]) -> list[Path]:
     """Filter NetCDF files to those covering the target time range (15s data only)."""
     filtered = []
@@ -92,6 +128,10 @@ def load_station(data_path: Path, station_name: str) -> pd.Series:
     result = result[~result.index.duplicated(keep="first")]
 
     print(f"{station_name}: {len(result)} hourly observations")
+
+    # Remove spikes using 24-hour rolling window, MAD threshold
+    result = remove_spikes(result, window_hours=24, threshold=5.0)
+
     return result
 
 
@@ -122,6 +162,10 @@ def plot_differential(depth_e: pd.Series, depth_f: pd.Series, filename: str):
     # Calculate differential depth: MJ03E - MJ03F (per constitution)
     # Positive values = MJ03E deeper than MJ03F (Central Caldera uplifted)
     uplift = combined["e"] - combined["f"]
+
+    # Remove spikes from the differential signal (before daily averaging)
+    print("  Filtering spikes from differential signal...")
+    uplift = remove_spikes(uplift, window_hours=24, threshold=3.5)
 
     # Resample to daily to remove tidal noise
     uplift_daily = uplift.resample("1D").mean()
