@@ -17,8 +17,10 @@ import matplotlib.dates as mdates
 MJ03E_PATH = Path("/home/jovyan/ooi/kdata/RS03ECAL-MJ03E-06-BOTPTA302-streamed-botpt_nano_sample_15s")
 MJ03F_PATH = Path("/home/jovyan/ooi/kdata/RS03CCAL-MJ03F-05-BOTPTA301-streamed-botpt_nano_sample_15s")
 
-# Output directory (project root)
-OUTPUT_DIR = Path("/home/jovyan/repos/specKitScience/my-analysis_botpt")
+# Output directories
+OUTPUT_DIR = Path("/home/jovyan/repos/specKitScience/my-analysis_botpt/outputs")
+DATA_DIR = OUTPUT_DIR / "data"
+FIGURES_DIR = OUTPUT_DIR / "figures"
 
 # Time range
 TIME_START = "2015-01-01"
@@ -149,9 +151,9 @@ def plot_depth(depth: pd.Series, station: str, filename: str, color: str):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / filename, dpi=300)
+    plt.savefig(FIGURES_DIR / filename, dpi=300)
     plt.close()
-    print(f"Saved: {filename}")
+    print(f"Saved: figures/{filename}")
 
 
 def compute_differential(depth_e: pd.Series, depth_f: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -182,14 +184,14 @@ def compute_differential(depth_e: pd.Series, depth_f: pd.Series) -> tuple[pd.Dat
 
 def export_parquet(hourly_df: pd.DataFrame, daily_df: pd.DataFrame):
     """Export cleaned data to Parquet files for easy integration with other datasets."""
-    hourly_path = OUTPUT_DIR / "differential_uplift_hourly.parquet"
-    daily_path = OUTPUT_DIR / "differential_uplift_daily.parquet"
+    hourly_path = DATA_DIR / "differential_uplift_hourly.parquet"
+    daily_path = DATA_DIR / "differential_uplift_daily.parquet"
 
     hourly_df.to_parquet(hourly_path)
     daily_df.to_parquet(daily_path)
 
-    print(f"Exported: {hourly_path.name} ({len(hourly_df)} rows)")
-    print(f"Exported: {daily_path.name} ({len(daily_df)} rows)")
+    print(f"Exported: data/{hourly_path.name} ({len(hourly_df)} rows)")
+    print(f"Exported: data/{daily_path.name} ({len(daily_df)} rows)")
 
 
 def plot_differential(daily_df: pd.DataFrame, filename: str):
@@ -239,13 +241,13 @@ def plot_differential(daily_df: pd.DataFrame, filename: str):
     ax.legend(loc="lower right", framealpha=0.9, fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / filename, dpi=300, facecolor="white", edgecolor="none")
+    plt.savefig(FIGURES_DIR / filename, dpi=300, facecolor="white", edgecolor="none")
     plt.close()
 
     # Reset rcParams
     plt.rcParams.update(plt.rcParamsDefault)
 
-    print(f"Saved: {filename}")
+    print(f"Saved: figures/{filename}")
 
 
 def main():

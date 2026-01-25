@@ -51,16 +51,16 @@ Spikes are removed using Median Absolute Deviation (MAD), which is more robust t
 
 ## Outputs
 
-All outputs in the project root directory:
+All outputs in the `outputs/` directory:
 
-### Data Products
+### Data Products (`outputs/data/`)
 
 | File | Description |
 |------|-------------|
 | `differential_uplift_hourly.parquet` | Hourly cleaned data (92,222 rows) with `depth_mj03e_m`, `depth_mj03f_m`, `differential_m` |
 | `differential_uplift_daily.parquet` | Daily averaged data (4,034 rows) with same columns |
 
-### Figures
+### Figures (`outputs/figures/`)
 
 | File | Description |
 |------|-------------|
@@ -72,7 +72,7 @@ All outputs in the project root directory:
 
 ```python
 import pandas as pd
-bpr = pd.read_parquet('differential_uplift_daily.parquet')
+bpr = pd.read_parquet('outputs/data/differential_uplift_daily.parquet')
 other = pd.read_parquet('other_instrument.parquet')
 merged = bpr.join(other, how='inner')
 ```
