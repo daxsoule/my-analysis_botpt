@@ -1,0 +1,16 @@
+name: axial-bpr-analysis
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pandas>=2.0
+  - xarray>=2024.0
+  - netcdf4>=1.6
+  - matplotlib>=3.8
+  - pyarrow>=14.0  # for parquet support
+  - jupyter>=1.0
+  - jupyterlab>=4.0
+  - pip
+  - pip:
+    - numpy>=1.26
