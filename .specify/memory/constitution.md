@@ -87,6 +87,35 @@ other = pd.read_parquet('other_instrument.parquet')
 merged = bpr.join(other, how='inner')
 ```
 
+## Project Structure
+
+```
+my-analysis_botpt/
+├── .gitignore
+├── .specify/
+│   ├── features/001-differential-uplift/
+│   │   ├── plan.md                 # Implementation plan
+│   │   ├── spec.md                 # Analysis specification
+│   │   └── tasks.md                # Task checklist
+│   └── memory/
+│       └── constitution.md         # This document
+├── analysis.py                     # Main analysis script
+├── requirements.txt                # Python dependencies
+└── outputs/
+    ├── constitution.pdf            # PDF reference
+    ├── data/
+    │   ├── differential_uplift_daily.parquet
+    │   └── differential_uplift_hourly.parquet
+    ├── figures/
+    │   ├── depth_mj03e.png
+    │   ├── depth_mj03f.png
+    │   └── differential_uplift.png
+    └── notebooks/
+        ├── README.md
+        ├── differential_uplift_analysis.ipynb
+        └── environment.yml
+```
+
 ## Notes
 
 - Swap xarray dimensions: `ds.swap_dims({'obs': 'time'})`
