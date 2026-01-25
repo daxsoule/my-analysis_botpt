@@ -24,6 +24,31 @@ This project calculates differential uplift between two Bottom Pressure Recorder
 
 `depth_m = (pressure_psia - 14.7) * 0.670`
 
+## Quality Control: Spike Removal
+
+Spikes are removed using Median Absolute Deviation (MAD), which is more robust to outliers than standard deviation.
+
+### Algorithm
+
+1. Calculate rolling median over 24-hour centered window
+2. Compute absolute deviation from rolling median for each point
+3. Calculate rolling MAD (median of absolute deviations)
+4. Scale MAD by 1.4826 to approximate standard deviation (for normal distributions, std ≈ 1.4826 × MAD)
+5. Flag points where deviation > threshold × scaled_MAD
+6. Replace flagged points with NaN
+
+### Thresholds
+
+| Data | Threshold | Rationale |
+|------|-----------|-----------|
+| Individual station depth | 5.0 | Conservative; catches obvious sensor glitches |
+| Differential signal | 3.5 | More aggressive; catches glitches that appear when one sensor spikes but not the other |
+
+### Why MAD over Standard Deviation?
+
+- Standard deviation is sensitive to extreme values—a single large spike inflates the std, making other spikes harder to detect
+- MAD uses medians, so outliers have minimal influence on the threshold calculation
+
 ## Outputs
 
 All outputs in the project root directory:
