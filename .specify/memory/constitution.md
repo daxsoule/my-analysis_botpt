@@ -53,11 +53,29 @@ Spikes are removed using Median Absolute Deviation (MAD), which is more robust t
 
 All outputs in the project root directory:
 
+### Data Products
+
+| File | Description |
+|------|-------------|
+| `differential_uplift_hourly.parquet` | Hourly cleaned data (92,222 rows) with `depth_mj03e_m`, `depth_mj03f_m`, `differential_m` |
+| `differential_uplift_daily.parquet` | Daily averaged data (4,034 rows) with same columns |
+
+### Figures
+
 | File | Description |
 |------|-------------|
 | `depth_mj03e.png` | Time series of Eastern Caldera depth (meters) |
 | `depth_mj03f.png` | Time series of Central Caldera depth (meters) |
 | `differential_uplift.png` | Time series of MJ03E - MJ03F depth difference, with red horizontal line marking 2015 high |
+
+### Usage
+
+```python
+import pandas as pd
+bpr = pd.read_parquet('differential_uplift_daily.parquet')
+other = pd.read_parquet('other_instrument.parquet')
+merged = bpr.join(other, how='inner')
+```
 
 ## Notes
 
