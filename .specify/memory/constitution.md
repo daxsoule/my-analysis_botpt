@@ -68,6 +68,16 @@ All outputs in the `outputs/` directory:
 | `depth_mj03f.png` | Time series of Central Caldera depth (meters) |
 | `differential_uplift.png` | Time series of MJ03E - MJ03F depth difference, with red horizontal line marking 2015 high |
 
+### Reproducible Notebook (`outputs/notebooks/`)
+
+| File | Description |
+|------|-------------|
+| `differential_uplift_analysis.ipynb` | Fully annotated Jupyter notebook mirroring the analysis |
+| `environment.yml` | Conda environment specification |
+| `README.md` | Quick start guide for reproducing the analysis |
+
+The notebook is self-contained and allows someone without access to Claude Code to clone the folder and reproduce the analysis from scratch.
+
 ### Usage
 
 ```python
