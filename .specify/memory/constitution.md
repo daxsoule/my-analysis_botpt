@@ -52,6 +52,20 @@ This is equivalent to `uplift_F - uplift_E` and matches the Axial research team'
 
 `depth_m = (pressure_psia - 14.7) * 0.670`
 
+This linear approximation ignores seawater compressibility, temperature, and salinity effects.
+For differential measurements these factors largely cancel between stations.
+
+## Instrument Drift Considerations
+
+BPRs exhibit long-term drift (typically 1-10 cm/year). The differential measurement
+(uplift_F - uplift_E) cancels common-mode drift affecting both sensors equally.
+
+**Limitations:**
+- Any **differential drift** between MJ03E and MJ03F would appear as a spurious trend
+- This analysis does **not** apply drift corrections
+- Long-term trends should be validated against campaign pressure measurements (ROV-based calibrations) when available
+- The OOI team performs periodic calibrations; check data quality notes for specific time periods
+
 ## Quality Control: Spike Removal
 
 Spikes are removed using Median Absolute Deviation (MAD), which is more robust to outliers than standard deviation.
@@ -84,6 +98,57 @@ The 2015 pre-eruption differential is used as a reference threshold for forecast
 - **Threshold uncertainty**: ±30 cm bands reflect this variability
 - **Forecasting caveat**: "the pattern could change" (per Axial research team)
 
+## Differential Uplift Figure
+
+![Differential Uplift at Axial Seamount](outputs/figures/differential_uplift.png)
+
+The figure shows differential uplift at Axial Seamount from 2015-2026, referenced to the 2015 pre-eruption threshold:
+
+- **Y-axis**: Uplift relative to 2015 threshold (0 = threshold level)
+- **Red solid line**: 2015 eruption threshold
+- **Red dashed lines**: Historical threshold range (±30 cm based on 2011 vs 2015 difference)
+- **Blue line**: Daily mean differential uplift
+
+### Key Features Visible
+
+1. **April 2015 Eruption**: Sharp deflation of ~1.4 m (differential) following the eruption
+2. **Post-eruption recovery**: Steady re-inflation from 2015-2026
+3. **Current state** (early 2026): ~0.2 m above the 2015 threshold
+
+### Interpretation
+
+The volcano has re-inflated past the 2015 pre-eruption level, entering the historical threshold range where previous eruptions have occurred. However, eruption thresholds vary between cycles, and "the pattern could change."
+
+## Validation Against Published Data
+
+### Comparison with Axial Research Team Results
+
+Our uncorrected analysis was compared against the Axial team's drift-corrected results for the period 2022-Oct 2025:
+
+| Metric | Axial Team (corrected) | Our Analysis (uncorrected) | Difference |
+|--------|------------------------|---------------------------|------------|
+| 2022 value | ~2.2 m | 1.29 m | 0.9 m |
+| Oct 2025 value | ~2.6 m | 1.55 m | 1.05 m |
+| Change 2022→Oct 2025 | ~0.4 m | 0.26 m | 0.14 m |
+
+Reference: https://axial.ceoas.oregonstate.edu/Blog_images/Axial-corrected-NANO-DIFF-uplift-2022-Oct2025.png
+
+### Discrepancy Analysis
+
+The ~1 m offset and ~35% rate difference are likely due to:
+
+1. **Drift corrections**: The Axial team applies corrections using campaign pressure measurements (ROV-based calibrations). Our analysis uses raw, uncorrected data.
+
+2. **Pressure-to-depth conversion**: We use a simple linear factor (0.670 m/psi). The Axial team may use a more sophisticated equation of state.
+
+3. **Additional corrections**: The Axial team may apply tidal models, oceanographic adjustments, or other corrections not included here.
+
+### Implications
+
+- **Relative patterns** (inflation/deflation timing, rate changes) are reliable
+- **Absolute values** should be treated with caution and validated against published results
+- For publication-quality work, drift corrections using campaign calibration data are recommended
+
 ## Outputs
 
 All outputs in the `outputs/` directory:
@@ -101,7 +166,7 @@ All outputs in the `outputs/` directory:
 |------|-------------|
 | `depth_mj03e.png` | Time series of Eastern Caldera depth (meters) |
 | `depth_mj03f.png` | Time series of Central Caldera depth (meters) |
-| `differential_uplift.png` | Differential uplift (MJ03F - MJ03E) with 2015 threshold and ±30 cm uncertainty bands |
+| `differential_uplift.png` | Differential uplift referenced to 2015 threshold with ±30 cm historical range |
 
 ### Usage
 

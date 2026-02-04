@@ -8,11 +8,20 @@ computes differential uplift, and generates figures.
 Sign Convention:
     We compute -(depth_F - depth_E) which is equivalent to (uplift_F - uplift_E).
     This matches the Axial research team's geophysical convention where:
-    - Increasing/positive values = inflation (uplift at caldera center)
-    - Decreasing/negative values = deflation (subsidence at caldera center)
+    - Positive values = inflation (uplift at caldera center relative to rim)
+    - Negative values = deflation (subsidence at caldera center relative to rim)
 
-    Note: Since BPR measures depth (water column), and depth DECREASES when
-    the seafloor uplifts, we negate the depth difference to get intuitive signs.
+    The figure references data to the 2015 pre-eruption threshold, so:
+    - 0 = the 2015 eruption threshold
+    - Values above 0 = inflated beyond the 2015 threshold
+    - Values below 0 = deflated relative to threshold
+
+Instrument Drift:
+    BPRs exhibit long-term drift (typically 1-10 cm/year). The differential
+    measurement (F minus E) cancels common-mode drift affecting both sensors.
+    Any differential drift between sensors would appear as a spurious trend.
+    This analysis does not apply drift corrections; users should validate
+    long-term trends against campaign pressure measurements when available.
 
 Usage:
     uv run python analysis.py
@@ -219,24 +228,40 @@ def export_parquet(hourly_df: pd.DataFrame, daily_df: pd.DataFrame):
 
 
 def plot_differential(daily_df: pd.DataFrame, filename: str):
-    """Plot differential uplift with eruption threshold and annotations."""
+    """Plot differential uplift with eruption threshold and annotations.
+
+    Data is referenced to the 2015 pre-eruption threshold, so:
+    - 0 = the 2015 eruption threshold
+    - Positive values = inflation above threshold
+    - Negative values = deflation below threshold
+
+    The plotted quantity is (uplift_F - uplift_E), equivalent to -(depth_F - depth_E).
+    This matches the Axial team convention where positive = inflation at caldera center.
+    """
     uplift_daily = daily_df["differential_m"]
 
     # Find 2015 pre-eruption high (before April 24, 2015 eruption)
-    # With our convention (positive = inflation), this is the MAXIMUM before eruption
+    # This becomes our reference datum (threshold = 0)
     pre_eruption = uplift_daily["2015-01-01":"2015-04-23"]
-    high_2015 = pre_eruption.max()
+    threshold_2015 = pre_eruption.max()
 
-    # Find post-eruption low for deflation magnitude
-    # This is the MINIMUM after the eruption (deflated state)
-    post_eruption = uplift_daily["2015-04-24":"2015-06-01"]
-    low_2015 = post_eruption.min()
-    deflation_magnitude = high_2015 - low_2015
+    # Reference all data to the 2015 threshold
+    # Now: 0 = threshold, positive = above threshold, negative = below
+    uplift_referenced = uplift_daily - threshold_2015
 
-    print(f"  2015 pre-eruption high: {high_2015:.2f} m")
-    print(f"  2015 post-eruption low: {low_2015:.2f} m")
-    print(f"  Differential deflation: {deflation_magnitude:.2f} m")
-    print(f"  (Total deflation at MJ03F was ~2.4 m; differential is smaller because MJ03E also deflects)")
+    # Find post-eruption low for deflation magnitude (in referenced coordinates)
+    post_eruption = uplift_referenced["2015-04-24":"2015-06-01"]
+    low_2015_ref = post_eruption.min()
+    deflation_magnitude = -low_2015_ref  # Make positive for display
+
+    # Current state relative to threshold
+    current_value = uplift_referenced.iloc[-1]
+
+    print(f"  2015 eruption threshold (reference datum): {threshold_2015:.2f} m (raw)")
+    print(f"  Co-eruption deflation: {deflation_magnitude:.2f} m below threshold")
+    print(f"  Current state: {current_value:+.2f} m relative to threshold")
+    print(f"  (Note: Total deflation at MJ03F was ~2.4 m; differential is smaller")
+    print(f"   because MJ03E also deflects ~1.0 m, consistent with caldera-wide deformation)")
 
     # Publication-quality figure settings
     plt.rcParams.update({
@@ -249,38 +274,39 @@ def plot_differential(daily_df: pd.DataFrame, filename: str):
 
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    # Plot the data
-    ax.plot(uplift_daily.index, uplift_daily.values,
+    # Plot the referenced data
+    ax.plot(uplift_referenced.index, uplift_referenced.values,
             color="#2E86AB", linewidth=1, label="Daily mean")
 
-    # Add reference line for 2015 pre-eruption high
-    ax.axhline(y=high_2015, color="red", linestyle="-", linewidth=1.5,
-               label=f"2015 eruption threshold ({high_2015:.2f} m)")
+    # Add reference line at threshold (0)
+    ax.axhline(y=0, color="red", linestyle="-", linewidth=1.5,
+               label="2015 eruption threshold")
 
     # Add threshold uncertainty bands (±30 cm, based on 2011 vs 2015 threshold difference)
-    ax.axhline(y=high_2015 + 0.30, color="red", linestyle="--", linewidth=1, alpha=0.7)
-    ax.axhline(y=high_2015 - 0.30, color="red", linestyle="--", linewidth=1, alpha=0.7,
-               label="Threshold uncertainty (±30 cm)")
+    ax.axhline(y=0.30, color="red", linestyle="--", linewidth=1, alpha=0.7)
+    ax.axhline(y=-0.30, color="red", linestyle="--", linewidth=1, alpha=0.7,
+               label="Historical threshold range (±30 cm)")
 
     # Add annotation for the 2015 eruption
     eruption_date = pd.Timestamp("2015-04-24")
     ax.annotate("2015 Eruption\n(Apr 24)",
-                xy=(eruption_date, low_2015),
-                xytext=(pd.Timestamp("2016-06-01"), low_2015 + 0.3),
+                xy=(eruption_date, low_2015_ref),
+                xytext=(pd.Timestamp("2016-03-01"), low_2015_ref + 0.15),
                 fontsize=9, ha='left',
                 arrowprops=dict(arrowstyle='->', color='gray', lw=1))
 
     # Add annotation for deflation magnitude
-    ax.annotate(f"Deflation: {deflation_magnitude:.2f} m\n(~2.4 m total at MJ03F)",
-                xy=(pd.Timestamp("2015-06-01"), (high_2015 + low_2015) / 2),
-                xytext=(pd.Timestamp("2016-06-01"), (high_2015 + low_2015) / 2 - 0.2),
-                fontsize=8, ha='left', color='gray',
+    ax.annotate(f"Deflation: {deflation_magnitude:.2f} m",
+                xy=(pd.Timestamp("2015-07-01"), low_2015_ref / 2),
+                xytext=(pd.Timestamp("2016-03-01"), low_2015_ref / 2 - 0.15),
+                fontsize=9, ha='left', color='gray',
                 arrowprops=dict(arrowstyle='->', color='gray', lw=0.8))
 
-    # Labels and title (F - E convention)
+    # Labels and title
+    # Title reflects that this is uplift_F - uplift_E (positive = inflation at center)
     ax.set_xlabel("Year")
-    ax.set_ylabel("Relative Uplift (m)")
-    ax.set_title("Differential Uplift at Axial Seamount (MJ03F − MJ03E)")
+    ax.set_ylabel("Uplift Relative to 2015 Threshold (m)")
+    ax.set_title("Differential Uplift at Axial Seamount")
 
     # Format x-axis for multi-year data
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
@@ -290,7 +316,7 @@ def plot_differential(daily_df: pd.DataFrame, filename: str):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
-    ax.legend(loc="lower right", framealpha=0.9, fontsize=9)
+    ax.legend(loc="upper left", framealpha=0.9, fontsize=9)
 
     plt.tight_layout()
     plt.savefig(FIGURES_DIR / filename, dpi=150, facecolor="white", edgecolor="none")
