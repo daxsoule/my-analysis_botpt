@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """
-analysis.py - Differential uplift analysis for Axial Seamount (2015)
+analysis.py - Differential uplift analysis for Axial Seamount
 
 Loads BPR data from MJ03E and MJ03F, converts pressure to depth,
-and generates three time series plots.
+computes differential uplift, and generates figures.
+
+Sign Convention:
+    We compute -(depth_F - depth_E) which is equivalent to (uplift_F - uplift_E).
+    This matches the Axial research team's geophysical convention where:
+    - Increasing/positive values = inflation (uplift at caldera center)
+    - Decreasing/negative values = deflation (subsidence at caldera center)
+
+    Note: Since BPR measures depth (water column), and depth DECREASES when
+    the seafloor uplifts, we negate the depth difference to get intuitive signs.
+
+Usage:
+    uv run python analysis.py
 """
 
 import re
@@ -100,14 +112,15 @@ def load_station(data_path: Path, station_name: str) -> pd.Series:
 
     hourly_chunks = []
 
-    for f in nc_files:
-        print(f"  Processing {f.name}...")
+    for i, f in enumerate(nc_files):
+        if i % 50 == 0:
+            print(f"  Processing file {i+1}/{len(nc_files)}...")
 
         # Load single file
         ds = xr.open_dataset(f, engine="netcdf4")
         ds = ds.swap_dims({"obs": "time"})
 
-        # Filter to 2015
+        # Filter to time range
         ds = ds.sel(time=slice(TIME_START, TIME_END))
 
         if len(ds.time) == 0:
@@ -144,20 +157,31 @@ def plot_depth(depth: pd.Series, station: str, filename: str, color: str):
     ax.plot(depth.index, depth.values, color=color, linewidth=0.5)
     ax.set_xlabel("Date")
     ax.set_ylabel("Depth (m)")
-    ax.set_title(f"{station} Depth - 2015")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    ax.set_title(f"{station} Depth")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.invert_yaxis()  # Depth increases downward
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(FIGURES_DIR / filename, dpi=300)
+    plt.savefig(FIGURES_DIR / filename, dpi=150)
     plt.close()
     print(f"Saved: figures/{filename}")
 
 
 def compute_differential(depth_e: pd.Series, depth_f: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Compute differential uplift and return hourly and daily DataFrames.
+
+    Sign convention for DEPTH difference:
+    We compute -(depth_F - depth_E) = depth_E - depth_F
+
+    This gives intuitive interpretation:
+    - Positive/increasing = inflation (F is shallower, uplifted)
+    - Negative/decreasing = deflation (F is deeper, subsided)
+
+    Note: The Axial team's "F minus E" convention refers to uplift/displacement,
+    not depth. Since depth_F decreases when F uplifts, we negate to match
+    their sign convention for the geophysical signal.
 
     Returns:
         Tuple of (hourly_df, daily_df) with columns for both stations and differential
@@ -168,9 +192,9 @@ def compute_differential(depth_e: pd.Series, depth_f: pd.Series) -> tuple[pd.Dat
         "depth_mj03f_m": depth_f
     }).dropna()
 
-    # Calculate differential depth: MJ03E - MJ03F (per constitution)
-    # Positive values = MJ03E deeper than MJ03F (Central Caldera uplifted)
-    combined["differential_m"] = combined["depth_mj03e_m"] - combined["depth_mj03f_m"]
+    # Calculate differential: -(depth_F - depth_E) so positive = inflation
+    # Equivalent to: uplift_F - uplift_E (Axial team convention)
+    combined["differential_m"] = -(combined["depth_mj03f_m"] - combined["depth_mj03e_m"])
 
     # Remove spikes from the differential signal
     print("  Filtering spikes from differential signal...")
@@ -195,14 +219,26 @@ def export_parquet(hourly_df: pd.DataFrame, daily_df: pd.DataFrame):
 
 
 def plot_differential(daily_df: pd.DataFrame, filename: str):
-    """Plot differential uplift from daily DataFrame."""
+    """Plot differential uplift with eruption threshold and annotations."""
     uplift_daily = daily_df["differential_m"]
 
-    # Find 2015 high value for reference line
-    uplift_2015 = uplift_daily["2015"]
-    high_2015 = uplift_2015.max()
+    # Find 2015 pre-eruption high (before April 24, 2015 eruption)
+    # With our convention (positive = inflation), this is the MAXIMUM before eruption
+    pre_eruption = uplift_daily["2015-01-01":"2015-04-23"]
+    high_2015 = pre_eruption.max()
 
-    # Set up publication-quality figure (two-column width: 6" x 3")
+    # Find post-eruption low for deflation magnitude
+    # This is the MINIMUM after the eruption (deflated state)
+    post_eruption = uplift_daily["2015-04-24":"2015-06-01"]
+    low_2015 = post_eruption.min()
+    deflation_magnitude = high_2015 - low_2015
+
+    print(f"  2015 pre-eruption high: {high_2015:.2f} m")
+    print(f"  2015 post-eruption low: {low_2015:.2f} m")
+    print(f"  Differential deflation: {deflation_magnitude:.2f} m")
+    print(f"  (Total deflation at MJ03F was ~2.4 m; differential is smaller because MJ03E also deflects)")
+
+    # Publication-quality figure settings
     plt.rcParams.update({
         'font.size': 10,
         'axes.labelsize': 11,
@@ -211,24 +247,40 @@ def plot_differential(daily_df: pd.DataFrame, filename: str):
         'ytick.labelsize': 10,
     })
 
-    fig, ax = plt.subplots(figsize=(6, 3))
+    fig, ax = plt.subplots(figsize=(12, 5))
 
     # Plot the data
     ax.plot(uplift_daily.index, uplift_daily.values,
             color="#2E86AB", linewidth=1, label="Daily mean")
 
-    # Add red horizontal line for 2015 high
+    # Add reference line for 2015 pre-eruption high
     ax.axhline(y=high_2015, color="red", linestyle="-", linewidth=1.5,
-               label=f"2015 high ({high_2015:.2f} m)")
+               label=f"2015 eruption threshold ({high_2015:.2f} m)")
 
-    # Add red dashed lines at +/- 20 cm from 2015 high
-    ax.axhline(y=high_2015 + 0.20, color="red", linestyle="--", linewidth=1, alpha=0.7)
-    ax.axhline(y=high_2015 - 0.20, color="red", linestyle="--", linewidth=1, alpha=0.7)
+    # Add threshold uncertainty bands (±30 cm, based on 2011 vs 2015 threshold difference)
+    ax.axhline(y=high_2015 + 0.30, color="red", linestyle="--", linewidth=1, alpha=0.7)
+    ax.axhline(y=high_2015 - 0.30, color="red", linestyle="--", linewidth=1, alpha=0.7,
+               label="Threshold uncertainty (±30 cm)")
 
-    # Labels and title
+    # Add annotation for the 2015 eruption
+    eruption_date = pd.Timestamp("2015-04-24")
+    ax.annotate("2015 Eruption\n(Apr 24)",
+                xy=(eruption_date, low_2015),
+                xytext=(pd.Timestamp("2016-06-01"), low_2015 + 0.3),
+                fontsize=9, ha='left',
+                arrowprops=dict(arrowstyle='->', color='gray', lw=1))
+
+    # Add annotation for deflation magnitude
+    ax.annotate(f"Deflation: {deflation_magnitude:.2f} m\n(~2.4 m total at MJ03F)",
+                xy=(pd.Timestamp("2015-06-01"), (high_2015 + low_2015) / 2),
+                xytext=(pd.Timestamp("2016-06-01"), (high_2015 + low_2015) / 2 - 0.2),
+                fontsize=8, ha='left', color='gray',
+                arrowprops=dict(arrowstyle='->', color='gray', lw=0.8))
+
+    # Labels and title (F - E convention)
     ax.set_xlabel("Year")
-    ax.set_ylabel("Differential Depth (m)")
-    ax.set_title("Differential Uplift (MJ03E − MJ03F)")
+    ax.set_ylabel("Relative Uplift (m)")
+    ax.set_title("Differential Uplift at Axial Seamount (MJ03F − MJ03E)")
 
     # Format x-axis for multi-year data
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
@@ -241,7 +293,7 @@ def plot_differential(daily_df: pd.DataFrame, filename: str):
     ax.legend(loc="lower right", framealpha=0.9, fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(FIGURES_DIR / filename, dpi=300, facecolor="white", edgecolor="none")
+    plt.savefig(FIGURES_DIR / filename, dpi=150, facecolor="white", edgecolor="none")
     plt.close()
 
     # Reset rcParams
@@ -254,6 +306,7 @@ def main():
     print("=" * 60)
     print("Differential Uplift Analysis - Axial Seamount")
     print(f"Time range: {TIME_START} to {TIME_END}")
+    print("Convention: Positive = inflation at caldera center")
     print("=" * 60)
 
     # Load data (processes file by file to manage memory)

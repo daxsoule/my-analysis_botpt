@@ -1,0 +1,13 @@
+[project]
+name = "my-analysis-botpt"
+version = "0.1.0"
+description = "Differential uplift analysis for Axial Seamount using OOI BPR data"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "netcdf4>=1.7.4",
+    "pandas>=3.0.0",
+    "pyarrow>=23.0.0",
+    "xarray>=2026.1.0",
+]

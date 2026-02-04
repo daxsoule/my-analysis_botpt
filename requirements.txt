@@ -1,8 +1,0 @@
-xarray
-pandas
-dask[distributed]
-matplotlib
-hvplot
-seaborn
-netcdf4
-zarr
