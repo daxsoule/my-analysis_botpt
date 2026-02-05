@@ -5,10 +5,12 @@ description = "Differential uplift analysis for Axial Seamount using OOI BPR dat
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "markdown>=3.10.1",
     "matplotlib>=3.10.8",
     "netcdf4>=1.7.4",
     "pandas>=3.0.0",
     "pyarrow>=23.0.0",
     "scipy>=1.17.0",
+    "weasyprint>=68.0",
     "xarray>=2026.1.0",
 ]
