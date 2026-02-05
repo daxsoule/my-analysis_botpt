@@ -149,6 +149,42 @@ The ~1 m offset and ~35% rate difference are likely due to:
 - **Absolute values** should be treated with caution and validated against published results
 - For publication-quality work, drift corrections using campaign calibration data are recommended
 
+## Caldera Bathymetry Map
+
+![Axial Seamount Caldera](outputs/figures/caldera_map.png)
+
+### Data Source
+
+- **File**: `MBARI_AxialSeamount_V2506_AUV_Summit_AUVOverShip_Topo1mSq.grd`
+- **Path**: `/home/jovyan/my_data/axial/axial_bathy/`
+- **Resolution**: 1m
+- **Format**: GMT/NetCDF grid
+
+### BPR Station Locations (verified from OOI NetCDF metadata)
+
+| Station | Latitude | Longitude | Location |
+|---------|----------|-----------|----------|
+| MJ03F | 45.95485°N | 130.008772°W | Central Caldera |
+| MJ03E | 45.939888°N | 129.974113°W | Eastern Caldera |
+
+### Vent Field Locations (user-provided coordinates)
+
+| Vent Field | Latitude | Longitude |
+|------------|----------|-----------|
+| ASHES | 45°56.0186'N | 130°00.8203'W |
+| CASM | 45°59.332'N | 130°01.632'W |
+| Coquille | 45°55.0448'N | 129°59.5793'W |
+| Int'l District | 45°55.5786'N | 129°58.7394'W |
+| Trevi | 45°56.777'N | 129°59.023'W |
+
+### Map Generation
+
+```bash
+uv run python make_caldera_map.py
+```
+
+Output: `outputs/figures/caldera_map.png` (600 dpi, full 1m resolution)
+
 ## Outputs
 
 All outputs in the `outputs/` directory:
@@ -164,6 +200,7 @@ All outputs in the `outputs/` directory:
 
 | File | Description |
 |------|-------------|
+| `caldera_map.png` | High-resolution (600 dpi) shaded relief bathymetry map with BPR stations and vent fields |
 | `depth_mj03e.png` | Time series of Eastern Caldera depth (meters) |
 | `depth_mj03f.png` | Time series of Central Caldera depth (meters) |
 | `differential_uplift.png` | Differential uplift referenced to 2015 threshold with ±30 cm historical range |
@@ -185,7 +222,8 @@ my-analysis_botpt/
 ├── .venv/                          # uv virtual environment
 ├── pyproject.toml                  # uv dependencies
 ├── uv.lock                         # Locked dependencies
-├── analysis.py                     # Main analysis script
+├── analysis.py                     # Differential uplift analysis script
+├── make_caldera_map.py             # Caldera bathymetry map script
 ├── .specify/
 │   ├── features/001-differential-uplift/
 │   │   ├── plan.md
@@ -199,6 +237,7 @@ my-analysis_botpt/
     │   ├── differential_uplift_daily.parquet
     │   └── differential_uplift_hourly.parquet
     ├── figures/
+    │   ├── caldera_map.png
     │   ├── depth_mj03e.png
     │   ├── depth_mj03f.png
     │   └── differential_uplift.png
@@ -214,8 +253,11 @@ my-analysis_botpt/
 # Install dependencies (first time)
 uv sync
 
-# Run analysis
+# Run differential uplift analysis
 uv run python analysis.py
+
+# Generate caldera bathymetry map
+uv run python make_caldera_map.py
 ```
 
 ## References
