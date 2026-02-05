@@ -188,6 +188,21 @@ The ~1 m offset and ~35% rate difference are likely due to:
 | Int'l District | 45°55.5786'N | 129°58.7394'W |
 | Trevi | 45°56.777'N | 129°59.023'W |
 
+### Individual Vent Coordinates (canonical reference from miso_my-analysis)
+
+| Vent | Vent Field | Longitude | Latitude | 2024 Logger |
+|------|------------|-----------|----------|-------------|
+| Inferno | ASHES | -130.013674 | 45.933566 | MISO 2023-005 |
+| Hell | ASHES | -130.013943 | 45.933307 | MISO 2023-002 |
+| Virgin | ASHES | -130.013237 | 45.933624 | MISO 2023-007 |
+| Phoenix | ASHES | -130.0136515 | 45.93327021 | |
+| Vixen/Mkr218 | Coquille | -129.99295 | 45.91733 | MISO 2023-012 |
+| El Guapo | International District | -129.979493 | 45.926486 | MISO 2023-009 |
+| Tiny Tower | International District | -129.979186 | 45.926314 | MISO 2017-002 |
+| Trevi/Mkr156 | Trevi | -129.983713 | 45.946276 | MISO 2023-010 |
+| T&S or Shepherd | CASM | -130.027294 | 45.989202 | |
+| Castle-Mkr278 | International District | -129.979996 | 45.926218 | MISO 103 |
+
 ### Map Generation
 
 ```bash
