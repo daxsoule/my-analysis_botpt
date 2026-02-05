@@ -9,5 +9,6 @@ dependencies = [
     "netcdf4>=1.7.4",
     "pandas>=3.0.0",
     "pyarrow>=23.0.0",
+    "scipy>=1.17.0",
     "xarray>=2026.1.0",
 ]
