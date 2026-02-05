@@ -48,12 +48,23 @@ This is equivalent to `uplift_F - uplift_E` and matches the Axial research team'
 - **Key packages**: xarray, pandas, matplotlib, netcdf4, pyarrow
 - **Working directory**: `/home/jovyan/repos/specKitScience/my-analysis_botpt/`
 
-## Pressure-to-Depth Conversion
+## Depth Data Source
 
-`depth_m = (pressure_psia - 14.7) * 0.670`
+The analysis uses OOI's precalculated depth variable **`botsflu_meandepth`** from the NetCDF files.
+This variable applies a proper equation of state for the pressure-to-depth conversion,
+accounting for seawater properties more accurately than a simple linear approximation.
 
-This linear approximation ignores seawater compressibility, temperature, and salinity effects.
-For differential measurements these factors largely cancel between stations.
+**Variable details:**
+- Name: `botsflu_meandepth` ("Seafloor Uplift and Deflation - Mean Seafloor Depth")
+- Units: meters
+- Convention: Negative values (below sea surface); we use absolute values
+- Implied conversion factor: ~0.674 m/psi (vs. 0.670 for simple linear)
+
+**Previous approach (deprecated):**
+```
+depth_m = (pressure_psia - 14.7) * 0.670
+```
+This linear approximation is kept in the code for reference only.
 
 ## Instrument Drift Considerations
 

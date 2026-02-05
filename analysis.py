@@ -2,8 +2,14 @@
 """
 analysis.py - Differential uplift analysis for Axial Seamount
 
-Loads BPR data from MJ03E and MJ03F, converts pressure to depth,
-computes differential uplift, and generates figures.
+Loads BPR data from MJ03E and MJ03F, computes differential uplift,
+and generates figures.
+
+Depth Source:
+    Uses OOI's 'botsflu_meandepth' variable from the NetCDF files, which provides
+    precalculated depth using a proper equation of state. This is more accurate
+    than a simple linear pressure-to-depth conversion. The variable uses a
+    negative convention (below sea surface); we take absolute values.
 
 Sign Convention:
     We compute -(depth_F - depth_E) which is equivalent to (uplift_F - uplift_E).
@@ -29,6 +35,7 @@ Usage:
 
 import re
 from pathlib import Path
+import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -51,7 +58,12 @@ TIME_END_YEAR = 2026
 
 
 def pressure_to_depth(pressure_psia):
-    """Convert pressure in psia to depth in meters."""
+    """Convert pressure in psia to depth in meters.
+
+    DEPRECATED: This function is kept for reference only.
+    The analysis now uses the OOI-provided 'botsflu_meandepth' variable
+    which applies a proper equation of state for pressure-to-depth conversion.
+    """
     return (pressure_psia - 14.7) * 0.670
 
 
@@ -113,7 +125,12 @@ def filter_files_by_time_range(nc_files: list[Path]) -> list[Path]:
 
 
 def load_station(data_path: Path, station_name: str) -> pd.Series:
-    """Load pressure data for a station, filtered to time range, resampled to hourly."""
+    """Load depth data for a station, filtered to time range, resampled to hourly.
+
+    Uses OOI's 'botsflu_meandepth' variable which provides precalculated depth
+    using a proper equation of state (more accurate than simple linear conversion).
+    The values are negative (below sea surface convention); we take absolute value.
+    """
     all_files = sorted(data_path.glob("*.nc"))
     nc_files = filter_files_by_time_range(all_files)
 
@@ -136,13 +153,13 @@ def load_station(data_path: Path, station_name: str) -> pd.Series:
             ds.close()
             continue
 
-        # Get pressure, convert to depth, resample to hourly (reduces memory)
-        pressure = ds["bottom_pressure"].values
+        # Get OOI-calculated depth (negative convention: below sea surface)
+        # Take absolute value to get positive depth
+        depth = np.abs(ds["botsflu_meandepth"].values)
         time = ds["time"].values
         ds.close()
 
-        # Create series and resample
-        depth = pressure_to_depth(pressure)
+        # Create series and resample to hourly
         series = pd.Series(depth, index=pd.DatetimeIndex(time))
         hourly = series.resample("1h").mean()
         hourly_chunks.append(hourly)
