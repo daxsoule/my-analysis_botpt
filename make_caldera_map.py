@@ -31,6 +31,7 @@ STATIONS = {
 # Format: degrees + minutes/60
 VENTS = {
     "ASHES": {"lon": -(130 + 0.8203/60), "lat": 45 + 56.0186/60},           # 45°56.0186'N, 130°00.8203'W
+    "CASM": {"lon": -(130 + 1.632/60), "lat": 45 + 59.332/60},              # 45°59.332'N, 130°01.632'W
     "Coquille": {"lon": -(129 + 59.5793/60), "lat": 45 + 55.0448/60},       # 45°55.0448'N, 129°59.5793'W
     "Int'l District": {"lon": -(129 + 58.7394/60), "lat": 45 + 55.5786/60}, # 45°55.5786'N, 129°58.7394'W
     "Trevi": {"lon": -(129 + 59.023/60), "lat": 45 + 56.777/60},            # 45°56.777'N, 129°59.023'W
@@ -108,6 +109,7 @@ def plot_caldera_map(lon, lat, z, output_path: Path, subsample: int = 1):
     # Label offsets to avoid overlap
     label_offsets = {
         "ASHES": (-60, 5),
+        "CASM": (-55, 5),
         "Coquille": (-65, -5),
         "Int'l District": (10, -5),
         "Trevi": (10, 5),
